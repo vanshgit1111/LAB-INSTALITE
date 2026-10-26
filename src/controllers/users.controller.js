@@ -9,15 +9,8 @@ export async function create(req, res) {
     return res.status(400).json({ error: "username, email and fullname are required" });
   }
 
-  const data = {
-    username,
-    email,
-    fullname,
-  };
-
-  if (bio !== undefined) {
-    data.bio = bio;
-  }
+  const data = { username, email, fullname };
+  if (bio !== undefined) data.bio = bio;
 
   try {
     const user = await usersService.createUser(data);
@@ -31,13 +24,29 @@ export async function create(req, res) {
 }
 
 export async function list(req, res) {
+  // --- pagination ---
   const pagination = parsePagination(req.query);
   if (pagination.error) {
     return res.status(400).json({ error: pagination.error });
   }
 
-  const { search, isPrivate, hasPosts, sortBy = "createdAt", order: orderParam } = req.query;
+  const { search, isPrivate, sortBy = "createdAt", order: orderParam } = req.query;
 
+  // --- sortBy validation ---
+  const allowedSortBy = ["createdAt", "username", "fullname"];
+  if (!allowedSortBy.includes(sortBy)) {
+    return res
+      .status(400)
+      .json({ error: "sortBy must be one of: createdAt, username, fullname" });
+  }
+
+  // --- order validation ---
+  if (orderParam !== undefined && orderParam !== "asc" && orderParam !== "desc") {
+    return res.status(400).json({ error: "order must be asc or desc" });
+  }
+  const order = orderParam ?? "desc";
+
+  // --- filters ---
   const where = {};
 
   if (search) {
@@ -57,17 +66,6 @@ export async function list(req, res) {
     }
   }
 
-  if (hasPosts !== undefined) {
-    if (hasPosts === "true") {
-      where.posts = { some: {} };
-    } else if (hasPosts === "false") {
-      where.posts = { none: {} };
-    } else {
-      return res.status(400).json({ error: "hasPosts must be true or false" });
-    }
-  }
-
-  const order = orderParam?.toLowerCase() === "asc" ? "asc" : "desc";
   const orderBy = [{ [sortBy]: order }];
 
   try {
@@ -95,9 +93,7 @@ export async function getOne(req, res) {
 
   try {
     const user = await usersService.getUserById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
     return res.status(200).json(user);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -112,7 +108,6 @@ export async function update(req, res) {
 
   const { fullname, bio, isPrivate } = req.body || {};
   const data = {};
-
   if (fullname !== undefined) data.fullname = fullname;
   if (bio !== undefined) data.bio = bio;
   if (isPrivate !== undefined) data.isPrivate = isPrivate;
@@ -147,20 +142,14 @@ export async function remove(req, res) {
 
 export async function getUserPosts(req, res) {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    return res.status(404).json({ error: "User not found" });
-  }
+  if (isNaN(id)) return res.status(404).json({ error: "User not found" });
 
   const pagination = parsePagination(req.query);
-  if (pagination.error) {
-    return res.status(400).json({ error: pagination.error });
-  }
+  if (pagination.error) return res.status(400).json({ error: pagination.error });
 
   try {
     const user = await usersService.getUserById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     const { total, posts } = await postsService.getUserPosts(id, {
       skip: pagination.skip,
@@ -178,20 +167,14 @@ export async function getUserPosts(req, res) {
 
 export async function getUserLikedPosts(req, res) {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    return res.status(404).json({ error: "User not found" });
-  }
+  if (isNaN(id)) return res.status(404).json({ error: "User not found" });
 
   const pagination = parsePagination(req.query);
-  if (pagination.error) {
-    return res.status(400).json({ error: pagination.error });
-  }
+  if (pagination.error) return res.status(400).json({ error: pagination.error });
 
   try {
     const user = await usersService.getUserById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     const { total, posts } = await postsService.getUserLikedPosts(id, {
       skip: pagination.skip,

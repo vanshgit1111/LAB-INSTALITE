@@ -13,11 +13,7 @@ export async function create(req, res) {
     return res.status(404).json({ error: "User not found" });
   }
 
-  const data = {
-    imageUrl,
-    authorId: parsedAuthorId,
-  };
-
+  const data = { imageUrl, authorId: parsedAuthorId };
   if (caption !== undefined) data.caption = caption;
   if (location !== undefined) data.location = location;
 
@@ -33,40 +29,66 @@ export async function create(req, res) {
 }
 
 export async function list(req, res) {
+  // --- pagination ---
   const pagination = parsePagination(req.query);
   if (pagination.error) {
     return res.status(400).json({ error: pagination.error });
   }
 
-  const { search, location, sortBy = "createdAt", order: orderParam } = req.query;
+  const {
+    search,
+    location,
+    from,
+    to,
+    sortBy = "createdAt",
+    order: orderParam,
+  } = req.query;
 
-  const allowedSortBy = ["createdAt", "updatedAt", "likes"];
-  if (sortBy && !allowedSortBy.includes(sortBy)) {
-    return res.status(400).json({ error: "sortBy must be one of: createdAt, updatedAt, likes" });
+  // --- sortBy validation ---
+  const allowedSortBy = ["createdAt", "updatedAt"];
+  if (!allowedSortBy.includes(sortBy)) {
+    return res
+      .status(400)
+      .json({ error: "sortBy must be one of: createdAt, updatedAt" });
   }
 
-  const order = orderParam?.toLowerCase() === "asc" ? "asc" : "desc";
+  // --- order validation ---
+  if (orderParam !== undefined && orderParam !== "asc" && orderParam !== "desc") {
+    return res.status(400).json({ error: "order must be asc or desc" });
+  }
+  const order = orderParam ?? "desc";
 
-  let orderBy;
-  if (sortBy === "likes") {
-    orderBy = [
-      { likes: { _count: order } },
-      { createdAt: "desc" },
-    ];
-  } else {
-    orderBy = [
-      { [sortBy]: order },
-      { createdAt: "desc" },
-    ];
+  // --- from / to date validation ---
+  let fromDate, toDate;
+  if (from !== undefined) {
+    fromDate = new Date(from);
+    if (isNaN(fromDate.getTime())) {
+      return res.status(400).json({ error: "from and to must be valid dates" });
+    }
+  }
+  if (to !== undefined) {
+    toDate = new Date(to);
+    if (isNaN(toDate.getTime())) {
+      return res.status(400).json({ error: "from and to must be valid dates" });
+    }
   }
 
+  // --- build where clause ---
   const where = {};
+
   if (search) {
     where.caption = { contains: search, mode: "insensitive" };
   }
   if (location) {
     where.location = { equals: location, mode: "insensitive" };
   }
+  if (fromDate || toDate) {
+    where.createdAt = {};
+    if (fromDate) where.createdAt.gte = fromDate;
+    if (toDate)   where.createdAt.lt  = toDate;   // 'to' is exclusive
+  }
+
+  const orderBy = [{ [sortBy]: order }];
 
   try {
     const { total, posts } = await postsService.listPosts({
@@ -87,15 +109,11 @@ export async function list(req, res) {
 
 export async function getOne(req, res) {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    return res.status(404).json({ error: "Post not found" });
-  }
+  if (isNaN(id)) return res.status(404).json({ error: "Post not found" });
 
   try {
     const post = await postsService.getPostById(id);
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
+    if (!post) return res.status(404).json({ error: "Post not found" });
     return res.status(200).json(post);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -104,13 +122,10 @@ export async function getOne(req, res) {
 
 export async function update(req, res) {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    return res.status(404).json({ error: "Post not found" });
-  }
+  if (isNaN(id)) return res.status(404).json({ error: "Post not found" });
 
   const { caption, location } = req.body || {};
   const data = {};
-
   if (caption !== undefined) data.caption = caption;
   if (location !== undefined) data.location = location;
 
@@ -127,9 +142,7 @@ export async function update(req, res) {
 
 export async function remove(req, res) {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    return res.status(404).json({ error: "Post not found" });
-  }
+  if (isNaN(id)) return res.status(404).json({ error: "Post not found" });
 
   try {
     await postsService.deletePost(id);

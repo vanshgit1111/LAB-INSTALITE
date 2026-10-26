@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "node test_suite.js",
-    "seed": "node prisma/seed.js"
+    "seed": "npx prisma db seed"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

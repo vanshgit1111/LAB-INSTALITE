@@ -13,7 +13,7 @@ export const users = [
   { username: "dev_shoots",    email: "dev@example.com",    fullname: "Dev Malhotra", bio: "Wildlife photography",      isPrivate: true,  createdAt: "2026-03-15T05:55:00.000Z" },
 ];
 
-// `author` is a username, NOT an id
+// `author` is a username — used by seed.js to resolve authorId
 export const posts = [
   { author: "riya_travels",  imageUrl: "https://picsum.photos/seed/insta01/600/600", caption: "Sunset at Baga beach 🌅",          location: "Goa",        createdAt: "2026-02-01T18:30:00.000Z" },
   { author: "arjun_clicks",  imageUrl: "https://picsum.photos/seed/insta02/600/600", caption: "Cutting chai at the station",      location: "Mumbai",     createdAt: "2026-02-04T08:10:00.000Z" },
@@ -41,37 +41,4 @@ export const posts = [
   { author: "dev_shoots",    imageUrl: "https://picsum.photos/seed/insta24/600/600", caption: "Tiger spotted at Tadoba 🐅",       location: "Chandrapur", createdAt: "2026-05-02T06:40:00.000Z" },
 ];
 
-// `user` (a username) likes `post` (the insta## key from the post's imageUrl)
-export const likes = [
-  { user: "meera.eats",    post: "insta01" },
-  { user: "vikram.trek",   post: "insta01" },
-  { user: "arjun_clicks",  post: "insta01" },
-  { user: "isha_dances",   post: "insta01" },
-  { user: "neha_designs",  post: "insta01" },
-  { user: "riya_travels",  post: "insta03" },
-  { user: "rohan_runs",    post: "insta03" },
-  { user: "arjun_clicks",  post: "insta08" },
-  { user: "kabir_sings",   post: "insta08" },
-  { user: "meera.eats",    post: "insta08" },
-  { user: "riya_travels",  post: "insta10" },
-  { user: "ananya_reads",  post: "insta10" },
-  { user: "kabir_sings",   post: "insta10" },
-  { user: "dev_shoots",    post: "insta13" },
-  { user: "arjun_clicks",  post: "insta14" },
-  { user: "meera.eats",    post: "insta15" },
-  { user: "neha_designs",  post: "insta15" },
-  { user: "aditya_codes",  post: "insta15" },
-  { user: "rohan_runs",    post: "insta17" },
-  { user: "isha_dances",   post: "insta17" },
-  { user: "vikram.trek",   post: "insta20" },
-  { user: "riya_travels",  post: "insta20" },
-  { user: "neha_designs",  post: "insta22" },
-  { user: "riya_travels",  post: "insta24" },
-  { user: "aditya_codes",  post: "insta24" },
-  { user: "vikram.trek",   post: "insta24" },
-  { user: "arjun_clicks",  post: "insta24" },
-  { user: "sara_sketches", post: "insta24" },
-  { user: "rohan_runs",    post: "insta24" },
-];
-
-export default { users, posts, likes };
+export default { users, posts };
