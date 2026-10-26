@@ -1,4 +1,6 @@
 import * as usersService from "../services/users.service.js";
+import * as postsService from "../services/posts.service.js";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
 
 export async function create(req, res) {
   const { username, email, fullname, bio } = req.body || {};
@@ -29,9 +31,57 @@ export async function create(req, res) {
 }
 
 export async function list(req, res) {
+  const pagination = parsePagination(req.query);
+  if (pagination.error) {
+    return res.status(400).json({ error: pagination.error });
+  }
+
+  const { search, isPrivate, hasPosts, sortBy = "createdAt", order: orderParam } = req.query;
+
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      { username: { contains: search, mode: "insensitive" } },
+      { fullname: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (isPrivate !== undefined) {
+    if (isPrivate === "true") {
+      where.isPrivate = true;
+    } else if (isPrivate === "false") {
+      where.isPrivate = false;
+    } else {
+      return res.status(400).json({ error: "isPrivate must be true or false" });
+    }
+  }
+
+  if (hasPosts !== undefined) {
+    if (hasPosts === "true") {
+      where.posts = { some: {} };
+    } else if (hasPosts === "false") {
+      where.posts = { none: {} };
+    } else {
+      return res.status(400).json({ error: "hasPosts must be true or false" });
+    }
+  }
+
+  const order = orderParam?.toLowerCase() === "asc" ? "asc" : "desc";
+  const orderBy = [{ [sortBy]: order }];
+
   try {
-    const users = await usersService.listUsers();
-    return res.status(200).json(users);
+    const { total, users } = await usersService.listUsers({
+      where,
+      orderBy,
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
+
+    return res.status(200).json({
+      data: users,
+      meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -91,6 +141,68 @@ export async function remove(req, res) {
     if (error.code === "P2025") {
       return res.status(404).json({ error: "User not found" });
     }
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+export async function getUserPosts(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const pagination = parsePagination(req.query);
+  if (pagination.error) {
+    return res.status(400).json({ error: pagination.error });
+  }
+
+  try {
+    const user = await usersService.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { total, posts } = await postsService.getUserPosts(id, {
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
+
+    return res.status(200).json({
+      data: posts,
+      meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+export async function getUserLikedPosts(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const pagination = parsePagination(req.query);
+  if (pagination.error) {
+    return res.status(400).json({ error: pagination.error });
+  }
+
+  try {
+    const user = await usersService.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { total, posts } = await postsService.getUserLikedPosts(id, {
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
+
+    return res.status(200).json({
+      data: posts,
+      meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+    });
+  } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
